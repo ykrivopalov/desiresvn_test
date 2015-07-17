@@ -5,23 +5,19 @@
 
 namespace Eval
 {
-  class Thread
-  {
-  public:
-    virtual ~Thread() {}
-
-    virtual void Wait() = 0;
-  };
-
-  typedef std::shared_ptr<Thread> ThreadPtr;
-
   typedef std::function<void()> Routine;
 
   class ThreadPool
   {
   public:
-    ThreadPool();
+    ThreadPool() = default;
+    ThreadPool(const ThreadPool& obj) = delete;
+    virtual ~ThreadPool() {}
 
-    ThreadPtr Execute(Routine routine);
+    virtual void Execute(Routine routine) = 0;
   };
+
+  typedef std::shared_ptr<ThreadPool> ThreadPoolPtr;
+
+  ThreadPoolPtr CreateThreadPool(std::size_t threadCount);
 }

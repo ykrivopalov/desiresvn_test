@@ -1,4 +1,5 @@
 #include <eval/thread_pool.h>
+#include <chrono>
 #include <iostream>
 #include <thread>
 #include <QTest>
@@ -21,10 +22,22 @@ namespace Tests
   private slots:
       void ExecutesRoutine()
       {
-        Eval::ThreadPool pool;
+        Eval::ThreadPoolPtr pool = Eval::CreateThreadPool(1);
         bool executed = false;
-        pool.Execute(std::bind(SetTrue, std::ref(executed)))->Wait();
+        pool->Execute(std::bind(SetTrue, std::ref(executed)));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         QVERIFY(executed);
+      }
+
+      void ThreadCanBeReused()
+      {
+        Eval::ThreadPoolPtr pool = Eval::CreateThreadPool(1);
+        bool executed = false;
+        pool->Execute(std::bind(SetTrue, std::ref(executed)));
+        bool executed2 = false;
+        pool->Execute(std::bind(SetTrue, std::ref(executed2)));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        QVERIFY(executed && executed2);
       }
   };
 }
