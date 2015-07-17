@@ -6,124 +6,98 @@
 #include <thread>
 #include <queue>
 
-namespace Eval
-{
-  namespace
-  {
-    typedef std::shared_ptr<Routine> RoutinePtr;
+namespace eval {
 
-    class RoutineQueue
+namespace {
+
+typedef std::shared_ptr<Routine> RoutinePtr;
+
+class RoutineQueue {
+ public:
+  RoutineQueue() : stopped_(false) {}
+
+  void Push(const Routine& routine) {
     {
-    public:
-      RoutineQueue()
-        : Stopped(false)
-      {
-      }
-
-      void Push(const Routine& routine)
-      {
-        {
-          std::lock_guard<std::mutex> lock(Guard);
-          Queue.push(routine);
-        }
-        Condition.notify_one();
-      }
-
-      void Stop()
-      {
-        Stopped = true;
-        Condition.notify_all();
-      }
-
-      RoutinePtr Pop()
-      {
-        RoutinePtr result;
-        {
-          std::unique_lock<std::mutex> lock(Guard);
-          Condition.wait(lock, [this]{return Queue.size() > 0 || Stopped;});
-          if (!Stopped)
-          {
-            ///@todo move?
-            result.reset(new Routine(Queue.front()));
-            Queue.pop();
-          }
-        }
-        Condition.notify_one();
-        return result;
-      }
-
-    private:
-      std::mutex Guard; ///@todo something lighter?
-      std::condition_variable Condition;
-      std::queue<Routine> Queue;
-      std::atomic<bool> Stopped;
-    };
-
-
-    ///@todo sigmask?
-    class Worker
-    {
-    public:
-      Worker(RoutineQueue& queue)
-        : Queue(queue)
-        , Thread(&Worker::Loop, this)
-      {
-      }
-
-      void Wait()
-      {
-        Thread.join();
-      }
-
-    private:
-      void Loop()
-      {
-        while (RoutinePtr routine = Queue.Pop())
-        {
-          (*routine)();
-        }
-      }
-
-      RoutineQueue& Queue;
-      std::thread Thread;
-    };
+      std::lock_guard<std::mutex> lock(guard_);
+      queue_.push(routine);
+    }
+    condition_.notify_one();
   }
 
-  typedef std::shared_ptr<Worker> WorkerPtr;
-
-  class ThreadPoolImpl : public ThreadPool
-  {
-  public:
-    ThreadPoolImpl(std::size_t threadCount)
-    {
-      /// @todo maybe some sugar exists?
-      for (std::size_t i = 0; i < threadCount; ++i)
-      {
-        Workers.push_back(WorkerPtr(new Worker(Queue)));
-      }
-    }
-
-    ~ThreadPoolImpl()
-    {
-      Queue.Stop();
-      for (WorkerPtr& w: Workers)
-      {
-        w->Wait();
-      }
-    }
-
-    virtual void Execute(Routine routine)
-    {
-      Queue.Push(routine);
-    }
-
-  private:
-    RoutineQueue Queue;
-    std::vector<WorkerPtr> Workers;
-  };
-
-  ThreadPoolPtr CreateThreadPool(std::size_t threadCount)
-  {
-    return ThreadPoolPtr(new ThreadPoolImpl(threadCount));
+  void Stop() {
+    stopped_ = true;
+    condition_.notify_all();
   }
+
+  RoutinePtr Pop() {
+    RoutinePtr result;
+    {
+      std::unique_lock<std::mutex> lock(guard_);
+      condition_.wait(lock, [this] { return queue_.size() > 0 || stopped_; });
+      if (!stopped_) {
+        ///@todo move?
+        result.reset(new Routine(queue_.front()));
+        queue_.pop();
+      }
+    }
+    condition_.notify_one();
+    return result;
+  }
+
+ private:
+  std::mutex guard_;  ///@todo something lighter?
+  std::condition_variable condition_;
+  std::queue<Routine> queue_;
+  std::atomic<bool> stopped_;
+};
+
+///@todo sigmask?
+class Worker {
+ public:
+  Worker(RoutineQueue& queue) : queue_(queue), thread_(&Worker::Loop, this) {}
+
+  void Wait() { thread_.join(); }
+
+ private:
+  void Loop() {
+    while (RoutinePtr routine = queue_.Pop()) {
+      (*routine)();
+    }
+  }
+
+  RoutineQueue& queue_;
+  std::thread thread_;
+};
+
+}
+
+typedef std::shared_ptr<Worker> WorkerPtr;
+
+class ThreadPoolImpl : public ThreadPool {
+ public:
+  ThreadPoolImpl(std::size_t thread_count) {
+    /// @todo maybe some sugar exists?
+    for (std::size_t i = 0; i < thread_count; ++i) {
+      workers_.push_back(WorkerPtr(new Worker(queue_)));
+    }
+  }
+
+  ~ThreadPoolImpl() {
+    queue_.Stop();
+    for (WorkerPtr& w : workers_) {
+      w->Wait();
+    }
+  }
+
+  virtual void Execute(Routine routine) { queue_.Push(routine); }
+
+ private:
+  RoutineQueue queue_;
+  std::vector<WorkerPtr> workers_;
+};
+
+ThreadPoolPtr CreateThreadPool(std::size_t thread_count) {
+  return ThreadPoolPtr(new ThreadPoolImpl(thread_count));
+}
+
 }

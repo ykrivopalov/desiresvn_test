@@ -4,42 +4,32 @@
 #include <thread>
 #include <QTest>
 
-namespace Tests
-{
-  void SetTrue(bool& val)
-  {
-    val = true;
+namespace Tests {
+
+void SetTrue(bool& val) { val = true; }
+
+class ThreadPool : public QObject {
+  Q_OBJECT
+ private slots:
+  void ExecutesRoutine() {
+    eval::ThreadPoolPtr pool = eval::CreateThreadPool(1);
+    bool executed = false;
+    pool->Execute(std::bind(SetTrue, std::ref(executed)));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    QVERIFY(executed);
   }
 
-  void InfiniteLoop()
-  {
-    while (true) {}
+  void ThreadCanBeReused() {
+    eval::ThreadPoolPtr pool = eval::CreateThreadPool(1);
+    bool executed = false;
+    pool->Execute(std::bind(SetTrue, std::ref(executed)));
+    bool executed2 = false;
+    pool->Execute(std::bind(SetTrue, std::ref(executed2)));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    QVERIFY(executed && executed2);
   }
+};
 
-  class ThreadPool : public QObject
-  {
-    Q_OBJECT
-  private slots:
-      void ExecutesRoutine()
-      {
-        Eval::ThreadPoolPtr pool = Eval::CreateThreadPool(1);
-        bool executed = false;
-        pool->Execute(std::bind(SetTrue, std::ref(executed)));
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        QVERIFY(executed);
-      }
-
-      void ThreadCanBeReused()
-      {
-        Eval::ThreadPoolPtr pool = Eval::CreateThreadPool(1);
-        bool executed = false;
-        pool->Execute(std::bind(SetTrue, std::ref(executed)));
-        bool executed2 = false;
-        pool->Execute(std::bind(SetTrue, std::ref(executed2)));
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        QVERIFY(executed && executed2);
-      }
-  };
 }
 
 QTEST_MAIN(Tests::ThreadPool)

@@ -3,21 +3,21 @@
 #include <functional>
 #include <memory>
 
-namespace Eval
-{
-  typedef std::function<void()> Routine;
+namespace eval {
 
-  class ThreadPool
-  {
-  public:
-    ThreadPool() = default;
-    ThreadPool(const ThreadPool& obj) = delete;
-    virtual ~ThreadPool() {}
+typedef std::function<void()> Routine;
 
-    virtual void Execute(Routine routine) = 0;
-  };
+class ThreadPool {
+ public:
+  ThreadPool() = default;
+  ThreadPool(const ThreadPool& obj) = delete;
+  virtual ~ThreadPool() {}
 
-  typedef std::shared_ptr<ThreadPool> ThreadPoolPtr;
+  virtual void Execute(Routine routine) = 0;
+};
 
-  ThreadPoolPtr CreateThreadPool(std::size_t threadCount);
+typedef std::shared_ptr<ThreadPool> ThreadPoolPtr;
+
+ThreadPoolPtr CreateThreadPool(std::size_t thread_count);
+
 }
