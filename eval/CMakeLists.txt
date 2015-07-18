@@ -1,1 +1,1 @@
-add_library (eval thread_pool.cpp)
+add_library (eval thread_pool.cpp integrator.cpp)
