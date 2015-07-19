@@ -8,22 +8,31 @@ namespace eval {
 
 typedef std::pair<float, float> Point;
 
-template <typename Value>
-class Iterator {
+typedef std::function<float(float)> Function;
+typedef std::function<void(float)> ResultHandler;
+
+class Execution {
  public:
-  virtual Value GetValue() = 0;
-  virtual void Next() = 0;
-  virtual bool IsValid() = 0;
+  virtual void Wait() = 0;
+  virtual void Cancel() = 0;
 };
 
-typedef Iterator<Point> PointIterator;
-typedef std::shared_ptr<PointIterator> PointIteratorPtr;
+typedef std::shared_ptr<Execution> ExecutionPtr;
 
 class Integrator {
  public:
-  float Integrate(PointIteratorPtr points);
+  Integrator();
+
+  ExecutionPtr Integrate(Function f, float x0, float x1, ResultHandler handler);
+
+  void set_integration_step(float step) { integration_step_ = step; }
+  void set_threads_count(std::size_t count) { thread_count_ = count; }
+
+ private:
+  float integration_step_;
+  std::size_t thread_count_;
 };
 
-typedef std::function<float(float)> Function;
-PointIteratorPtr CreateIterator(float x0, float x1, float step, Function f);
-}
+float IntegrateSync(eval::Function f, float x0, float x1, float step,
+                    std::size_t thread_count);
+}  // namespace eval

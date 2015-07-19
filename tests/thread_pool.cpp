@@ -29,4 +29,14 @@ void ThreadPool::ThreadCanBeReused() {
   std::this_thread::sleep_for(std::chrono::seconds(1));
   QVERIFY(executed && executed2);
 }
+
+void ThreadPool::MultipleThreadsCanBeUsed() {
+  eval::ThreadPoolPtr pool = eval::CreateThreadPool(2);
+  bool executed = false;
+  pool->Execute(std::bind(SetTrue, std::ref(executed)));
+  bool executed2 = false;
+  pool->Execute(std::bind(SetTrue, std::ref(executed2)));
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  QVERIFY(executed && executed2);
+}
 }

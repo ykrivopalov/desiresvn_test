@@ -9,5 +9,6 @@ class ThreadPool : public QObject {
  private slots:
   void ExecutesRoutine();
   void ThreadCanBeReused();
+  void MultipleThreadsCanBeUsed();
 };
 }

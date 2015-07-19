@@ -1,55 +1,132 @@
 #include "integrator.h"
 
+#include <atomic>
 #include <cmath>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+
+#include "thread_pool.h"
+
+using namespace std::placeholders;
 
 namespace eval {
 
+namespace {
 float TrapezoidArea(const Point& a, const Point& b) {
   return (a.second + b.second) * (b.first - a.first) / 2;
 }
 
-float Integrator::Integrate(PointIteratorPtr points) {
-  if (!points->IsValid()) return 0;
-
-  float result = 0;
-
-  Point previous = points->GetValue();
-  points->Next();
-
-  while (points->IsValid()) {
-    Point current = points->GetValue();
-    result += TrapezoidArea(previous, current);
-
-    previous = current;
-    points->Next();
-  }
-
-  return result;
-}
-
-class FunctionIterator : public PointIterator {
- public:
-  FunctionIterator(float x0, float x1, float step, Function f)
-      : current_(x0, f(x0)), x1_(x1), step_(step), f_(f) {}
-
-  virtual Point GetValue() { return current_; }
-
-  virtual void Next() {
-    float new_x = current_.first + step_;
-    float new_y = new_x <= x1_ ? f_(new_x) : 0;
-    current_ = std::make_pair(new_x, new_y);
-  }
-
-  virtual bool IsValid() { return current_.first <= x1_; }
-
- private:
-  Point current_;
-  float x1_;
-  float step_;
-  Function f_;
+struct IntegrationParams {
+  Function f;
+  float x0;
+  float x1;
+  float step;
+  std::size_t thread_count;
 };
 
-PointIteratorPtr CreateIterator(float x0, float x1, float step, Function f) {
-  return PointIteratorPtr(new FunctionIterator(x0, x1, step, f));
+class Integration : public Execution {
+ public:
+  Integration(IntegrationParams params, ResultHandler handler)
+      : canceled_(false),
+        result_(0),
+        evaluations_left_(0),
+        params_(params),
+        thread_pool_(CreateThreadPool(params.thread_count)),
+        handler_(handler) {
+    Start();
+  }
+
+  virtual void Wait() {
+    std::unique_lock<std::mutex> lock(guard_);
+    completion_.wait(lock,
+                     [this] { return evaluations_left_ == 0 || canceled_; });
+  }
+
+  virtual void Cancel() {
+    canceled_ = true;
+    completion_.notify_all();
+  }
+
+ private:
+  void Start() {
+    const std::size_t tasks_per_thread = static_cast<std::size_t>(
+        (params_.x1 - params_.x0) / (params_.step * params_.thread_count));
+
+    evaluations_left_ = params_.thread_count;
+    float current_x = params_.x0;
+    ResultHandler tasks_handler =
+        std::bind(&Integration::on_tasks_completed, this, _1);
+    for (std::size_t i = 0; i < params_.thread_count - 1; ++i) {
+      float next_x = current_x + tasks_per_thread * params_.step;
+      thread_pool_->Execute(std::bind(&Integration::evaluate_tasks, this,
+                                      current_x, next_x, tasks_handler));
+      current_x = next_x;
+    }
+
+    thread_pool_->Execute(std::bind(&Integration::evaluate_tasks, this,
+                                    current_x, params_.x1, tasks_handler));
+  }
+
+  void on_tasks_completed(float tasks_result) {
+    std::size_t updated_evaluations_left = 0;
+    {
+      std::lock_guard<std::mutex> lock(guard_);
+      updated_evaluations_left = --evaluations_left_;
+      result_ += tasks_result;
+    }
+
+    if (updated_evaluations_left == 0) {
+      completion_.notify_all();
+      handler_(result_);
+    }
+  }
+
+  void evaluate_tasks(float x0, float x1, ResultHandler handler) const {
+    float result = 0;
+    Point previous_point(x0, params_.f(x0));
+    for (float x = x0 + params_.step; x <= x1; x += params_.step) {
+      if (canceled_) break;
+
+      Point current_point(x, params_.f(x));
+      result += TrapezoidArea(previous_point, current_point);
+      previous_point = std::move(current_point);
+    }
+    handler(result);
+  }
+
+  std::atomic<bool> canceled_;
+
+  std::mutex guard_;
+  std::condition_variable completion_;
+  float result_;
+  std::size_t evaluations_left_;
+
+  const IntegrationParams params_;
+  ThreadPoolPtr thread_pool_;
+  ResultHandler handler_;
+};
+}  // namespace
+
+Integrator::Integrator() : integration_step_(0.1), thread_count_(1) {}
+
+ExecutionPtr Integrator::Integrate(Function f, float x0, float x1,
+                                   ResultHandler handler) {
+  IntegrationParams params{f, x0, x1, integration_step_, thread_count_};
+
+  return ExecutionPtr(new Integration(params, handler));
 }
+
+float IntegrateSync(eval::Function f, float x0, float x1, float step,
+                    std::size_t thread_count) {
+  eval::Integrator integrator;
+  integrator.set_integration_step(step);
+  integrator.set_threads_count(thread_count);
+
+  float result = 0;
+  auto handler = [&result](float val) { result = val; };
+  eval::ExecutionPtr integration = integrator.Integrate(f, x0, x1, handler);
+  integration->Wait();
+  return result;
 }
+}  // namespace eval
