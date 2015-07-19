@@ -9,4 +9,5 @@ enable_testing()
 include_directories(${PROJECT_SOURCE_DIR})
 
 add_subdirectory (eval)
+add_subdirectory (gui)
 add_subdirectory (tests)
