@@ -13,15 +13,15 @@ using namespace std::placeholders;
 namespace eval {
 
 namespace {
-float TrapezoidArea(const Point& a, const Point& b) {
+double TrapezoidArea(const Point& a, const Point& b) {
   return (a.second + b.second) * (b.first - a.first) / 2;
 }
 
 struct IntegrationParams {
   Function f;
-  float x0;
-  float x1;
-  float step;
+  double x0;
+  double x1;
+  double step;
   std::size_t thread_count;
 };
 
@@ -54,11 +54,11 @@ class Integration : public Execution {
         (params_.x1 - params_.x0) / (params_.step * params_.thread_count));
 
     evaluations_left_ = params_.thread_count;
-    float current_x = params_.x0;
+    double current_x = params_.x0;
     ResultHandler tasks_handler =
         std::bind(&Integration::on_tasks_completed, this, _1);
     for (std::size_t i = 0; i < params_.thread_count - 1; ++i) {
-      float next_x = current_x + tasks_per_thread * params_.step;
+      double next_x = current_x + tasks_per_thread * params_.step;
       thread_pool_->Execute(std::bind(&Integration::evaluate_tasks, this,
                                       current_x, next_x, tasks_handler));
       current_x = next_x;
@@ -68,7 +68,7 @@ class Integration : public Execution {
                                     current_x, params_.x1, tasks_handler));
   }
 
-  void on_tasks_completed(float tasks_result) {
+  void on_tasks_completed(double tasks_result) {
     std::size_t updated_evaluations_left = 0;
     {
       std::lock_guard<std::mutex> lock(guard_);
@@ -82,10 +82,10 @@ class Integration : public Execution {
     }
   }
 
-  void evaluate_tasks(float x0, float x1, ResultHandler handler) const {
-    float result = 0;
+  void evaluate_tasks(double x0, double x1, ResultHandler handler) const {
+    double result = 0;
     Point previous_point(x0, params_.f(x0));
-    for (float x = x0 + params_.step; x <= x1; x += params_.step) {
+    for (double x = x0 + params_.step; x <= x1; x += params_.step) {
       if (canceled_) break;
 
       Point current_point(x, params_.f(x));
@@ -99,7 +99,7 @@ class Integration : public Execution {
 
   std::mutex guard_;
   std::condition_variable completion_;
-  float result_;
+  double result_;
   std::size_t evaluations_left_;
 
   const IntegrationParams params_;
@@ -110,21 +110,21 @@ class Integration : public Execution {
 
 Integrator::Integrator() : integration_step_(0.1), thread_count_(1) {}
 
-ExecutionPtr Integrator::Integrate(Function f, float x0, float x1,
+ExecutionPtr Integrator::Integrate(Function f, double x0, double x1,
                                    ResultHandler handler) {
   IntegrationParams params{f, x0, x1, integration_step_, thread_count_};
 
   return ExecutionPtr(new Integration(params, handler));
 }
 
-float IntegrateSync(eval::Function f, float x0, float x1, float step,
+double IntegrateSync(eval::Function f, double x0, double x1, double step,
                     std::size_t thread_count) {
   eval::Integrator integrator;
   integrator.set_integration_step(step);
   integrator.set_threads_count(thread_count);
 
-  float result = 0;
-  auto handler = [&result](float val) { result = val; };
+  double result = 0;
+  auto handler = [&result](double val) { result = val; };
   eval::ExecutionPtr integration = integrator.Integrate(f, x0, x1, handler);
   integration->Wait();
   return result;

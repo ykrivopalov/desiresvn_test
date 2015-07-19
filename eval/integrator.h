@@ -6,10 +6,10 @@
 
 namespace eval {
 
-typedef std::pair<float, float> Point;
+typedef std::pair<double, double> Point;
 
-typedef std::function<float(float)> Function;
-typedef std::function<void(float)> ResultHandler;
+typedef std::function<double(double)> Function;
+typedef std::function<void(double)> ResultHandler;
 
 class Execution {
  public:
@@ -23,16 +23,16 @@ class Integrator {
  public:
   Integrator();
 
-  ExecutionPtr Integrate(Function f, float x0, float x1, ResultHandler handler);
+  ExecutionPtr Integrate(Function f, double x0, double x1, ResultHandler handler);
 
-  void set_integration_step(float step) { integration_step_ = step; }
+  void set_integration_step(double step) { integration_step_ = step; }
   void set_threads_count(std::size_t count) { thread_count_ = count; }
 
  private:
-  float integration_step_;
+  double integration_step_;
   std::size_t thread_count_;
 };
 
-float IntegrateSync(eval::Function f, float x0, float x1, float step,
+double IntegrateSync(eval::Function f, double x0, double x1, double step,
                     std::size_t thread_count);
 }  // namespace eval
