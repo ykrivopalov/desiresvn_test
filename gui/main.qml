@@ -5,16 +5,20 @@ import QtQuick.Layouts 1.2
 
 ApplicationWindow {
   visible: true
-  title: "Integrator"
+  title: qsTr("Integrator")
 
   Integrator {
     id: integrator
-    onIntegrated: answerView.text = answer
+    onIntegrated: {
+      answerView.text = answer
+      cancelButton.visible = false
+      evaluateButton.visible = true
+    }
   }
 
   Column {
     Row {
-      Text { text: "Integrate:" }
+      Text { text: qsTr("Integrate:");  }
       TextField {
         text: "sin(x)"
         readOnly: true
@@ -23,7 +27,7 @@ ApplicationWindow {
 
     Row {
       Row {
-        Text { text: "From:" }
+        Text { text: qsTr("From:") }
         TextField {
           id: fromInput
           text: "0"
@@ -31,7 +35,7 @@ ApplicationWindow {
       }
 
       Row {
-        Text { text: "To:" }
+        Text { text: qsTr("To:") }
         TextField {
           id: toInput
           text: "10"
@@ -39,27 +43,52 @@ ApplicationWindow {
       }
 
       Row {
-        Text { text: "With step:" }
+        Text { text: qsTr("With step:") }
         TextField {
           id: stepInput
+          text: "1"
+        }
+      }
+
+      Row {
+        Text { text: qsTr("Thread count:") }
+        TextField {
+          id: threadCountInput
           text: "1"
         }
       }
     }
 
     Row {
-      Text { text: "Result:"}
+      Text { text: qsTr("Result:")}
       Text {
         id: answerView
       }
 
       Button {
-        text: "Evaluate"
+        id: evaluateButton
+        text: qsTr("Evaluate")
         onClicked: {
+          visible = false
+          answerView.text = qsTr("Integration in process")
+          cancelButton.visible = true
           integrator.from = fromInput.text
           integrator.to = toInput.text
           integrator.step = stepInput.text
+          integrator.thread_count = threadCountInput.text
           integrator.integrate()
+        }
+      }
+
+      Button {
+        id: cancelButton
+        text: qsTr("Cancel")
+        visible: false
+        onClicked: {
+          integrator.cancel()
+          answerView.text = qsTr("Integration interrupted")
+          cancelButton.visible = false
+          evaluateButton.visible = true
         }
       }
     }

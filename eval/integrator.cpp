@@ -39,14 +39,10 @@ class Integration : public Execution {
 
   virtual void Wait() {
     std::unique_lock<std::mutex> lock(guard_);
-    completion_.wait(lock,
-                     [this] { return evaluations_left_ == 0 || canceled_; });
+    completion_.wait(lock, [this] { return evaluations_left_ == 0; });
   }
 
-  virtual void Cancel() {
-    canceled_ = true;
-    completion_.notify_all();
-  }
+  virtual void Cancel() { canceled_ = true; }
 
  private:
   void Start() {
@@ -76,9 +72,10 @@ class Integration : public Execution {
       result_ += tasks_result;
     }
 
-    if (updated_evaluations_left == 0) {
+    if (updated_evaluations_left == 0 && !canceled_) {
+      if (!canceled_) handler_(result_);
+
       completion_.notify_all();
-      handler_(result_);
     }
   }
 
@@ -118,7 +115,7 @@ ExecutionPtr Integrator::Integrate(Function f, double x0, double x1,
 }
 
 double IntegrateSync(eval::Function f, double x0, double x1, double step,
-                    std::size_t thread_count) {
+                     std::size_t thread_count) {
   eval::Integrator integrator;
   integrator.set_integration_step(step);
   integrator.set_threads_count(thread_count);
