@@ -7,4 +7,4 @@ find_package (Threads)
 
 add_executable(integrator_gui main.cpp main.qrc integrator.cpp)
 set_property(TARGET integrator_gui PROPERTY CXX_STANDARD 11)
-target_link_libraries (integrator_gui eval Qt5::Gui Qt5::Quick ${CMAKE_THREADS_LIB_INIT})
+target_link_libraries (integrator_gui eval Qt5::Gui Qt5::Quick ${CMAKE_THREAD_LIBS_INIT})
