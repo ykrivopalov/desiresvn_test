@@ -6,68 +6,79 @@ import QtQuick.Layouts 1.2
 ApplicationWindow {
   visible: true
   title: qsTr("Integrator")
+  width: mainLayout.implicitWidth
+  height: mainLayout.implicitHeight
+  minimumWidth: mainLayout.implicitWidth
+  minimumHeight: mainLayout.implicitHeight
 
   Integrator {
     id: integrator
     onIntegrated: {
       answerView.text = answer
       cancelButton.visible = false
-      evaluateButton.visible = true
+      integrateButton.visible = true
     }
   }
 
-  Column {
-    Row {
+  ColumnLayout {
+    id: mainLayout
+    anchors.fill: parent
+
+    RowLayout {
       Text { text: qsTr("Integrate:");  }
       TextField {
         text: "sin(x)"
         readOnly: true
+        validator: DoubleValidator { locale: "C" }
+        Layout.fillWidth: true
       }
     }
 
-    Row {
-      Row {
+    GridLayout {
+      columns: 4
         Text { text: qsTr("From:") }
         TextField {
           id: fromInput
           text: "0"
+          Layout.fillWidth: true
         }
-      }
 
-      Row {
         Text { text: qsTr("To:") }
         TextField {
           id: toInput
           text: "10"
+          validator: DoubleValidator { locale: "C" }
+          Layout.fillWidth: true
         }
-      }
 
-      Row {
         Text { text: qsTr("With step:") }
         TextField {
           id: stepInput
           text: "1"
+          validator: DoubleValidator { locale: "C" }
+          Layout.fillWidth: true
         }
-      }
 
-      Row {
-        Text { text: qsTr("Thread count:") }
+        Text { text: qsTr("Threads:") }
         TextField {
           id: threadCountInput
           text: "1"
+          validator: IntValidator {}
+          Layout.fillWidth: true
         }
-      }
     }
 
-    Row {
+    RowLayout {
       Text { text: qsTr("Result:")}
       Text {
         id: answerView
+        text: "0"
+        Layout.fillWidth: true
       }
 
       Button {
-        id: evaluateButton
-        text: qsTr("Evaluate")
+        id: integrateButton
+        text: qsTr("Integrate")
         onClicked: {
           visible = false
           answerView.text = qsTr("Integration in process")
@@ -88,7 +99,7 @@ ApplicationWindow {
           integrator.cancel()
           answerView.text = qsTr("Integration interrupted")
           cancelButton.visible = false
-          evaluateButton.visible = true
+          integrateButton.visible = true
         }
       }
     }

@@ -11,7 +11,6 @@ void Integrator::cancel() {
 }
 
 void Integrator::integrate() {
-  emit integration_started();
   integrator_.set_integration_step(step_);
   integrator_.set_threads_count(thread_count_);
   current_integration_ = integrator_.Integrate([](double x) { return std::sin(x); }, from_, to_, [this](double result){ integration_completed(result); });

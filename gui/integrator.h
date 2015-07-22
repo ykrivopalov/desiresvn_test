@@ -20,7 +20,6 @@ class Integrator : public QObject {
   double answer() { return answer_; }
 
  signals:
-  void integration_started();
   void integrated();
 
  public slots:
