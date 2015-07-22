@@ -37,7 +37,7 @@ ApplicationWindow {
       return false
     }
 
-    if (stepInput.text < 1) {
+    if (stepInput.text <= 0) {
       showError(qsTr("integration step must be greater then 0"))
       return false
     }
@@ -92,7 +92,7 @@ ApplicationWindow {
         TextField {
           id: stepInput
           text: "1"
-          validator: DoubleValidator { locale: "C" }
+          validator: DoubleValidator { locale: "C"; bottom: 0 }
           Layout.fillWidth: true
         }
 
