@@ -1,4 +1,3 @@
-# @todo why 3.2?
 cmake_minimum_required (VERSION 3.2)
 
 project (desiredvpn_test)

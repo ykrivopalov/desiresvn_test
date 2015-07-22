@@ -36,7 +36,6 @@ class RoutineQueue {
       std::unique_lock<std::mutex> lock(guard_);
       condition_.wait(lock, [this] { return queue_.size() > 0 || stopped_; });
       if (!stopped_) {
-        ///@todo move?
         result.reset(new Routine(queue_.front()));
         queue_.pop();
       }
@@ -46,13 +45,12 @@ class RoutineQueue {
   }
 
  private:
-  std::mutex guard_;  ///@todo something lighter?
+  std::mutex guard_;
   std::condition_variable condition_;
   std::queue<Routine> queue_;
   std::atomic<bool> stopped_;
 };
 
-///@todo sigmask?
 class Worker {
  public:
   Worker(RoutineQueue& queue) : queue_(queue), thread_(&Worker::Loop, this) {}
@@ -78,7 +76,6 @@ class ThreadPoolImpl : public ThreadPool {
   ThreadPoolImpl(std::size_t thread_count) {
     assert(thread_count > 0);
     try {
-      /// @todo maybe some sugar exists?
       for (std::size_t i = 0; i < thread_count; ++i) {
         workers_.push_back(WorkerPtr(new Worker(queue_)));
       }
