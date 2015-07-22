@@ -24,5 +24,4 @@ typedef std::shared_ptr<ThreadPool> ThreadPoolPtr;
 /// @note All the routines are executed in preallocated threads. If the number
 /// of threads is not enough then routine will be put in the queue.
 ThreadPoolPtr CreateThreadPool(std::size_t thread_count);
-
 }

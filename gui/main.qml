@@ -11,12 +11,49 @@ ApplicationWindow {
   minimumWidth: mainLayout.implicitWidth
   minimumHeight: mainLayout.implicitHeight
 
+  function idleMode() {
+    integrateButton.visible = true
+    cancelButton.visible = false
+  }
+
+  function integrationMode() {
+    integrateButton.visible = false
+    cancelButton.visible = true
+  }
+
+  function showError(msg) {
+    answerView.text = qsTr("Error") + ": " + msg
+  }
+
+  function checkInputFields() {
+    if (fromInput.text.length == 0 || toInput.text.length == 0 ||
+        stepInput.text.length == 0 || threadCountInput.text.length == 0) {
+      showError(qsTr("you must fill all fields"))
+      return false
+    }
+
+    if (threadCountInput.text < 1) {
+      showError(qsTr("thread count must be greater then 0"))
+      return false
+    }
+
+    if (stepInput.text < 1) {
+      showError(qsTr("integration step must be greater then 0"))
+      return false
+    }
+
+    return true
+  }
+
   Integrator {
     id: integrator
     onIntegrated: {
-      answerView.text = answer
-      cancelButton.visible = false
-      integrateButton.visible = true
+      answerView.text = result
+      idleMode()
+    }
+    onError: {
+      showError(error)
+      idleMode()
     }
   }
 
@@ -29,7 +66,6 @@ ApplicationWindow {
       TextField {
         text: "sin(x)"
         readOnly: true
-        validator: DoubleValidator { locale: "C" }
         Layout.fillWidth: true
       }
     }
@@ -40,6 +76,7 @@ ApplicationWindow {
         TextField {
           id: fromInput
           text: "0"
+          validator: DoubleValidator { locale: "C" }
           Layout.fillWidth: true
         }
 
@@ -63,7 +100,7 @@ ApplicationWindow {
         TextField {
           id: threadCountInput
           text: "1"
-          validator: IntValidator {}
+          validator: IntValidator { bottom: 1 }
           Layout.fillWidth: true
         }
     }
@@ -80,14 +117,16 @@ ApplicationWindow {
         id: integrateButton
         text: qsTr("Integrate")
         onClicked: {
-          visible = false
-          answerView.text = qsTr("Integration in process")
-          cancelButton.visible = true
-          integrator.from = fromInput.text
-          integrator.to = toInput.text
-          integrator.step = stepInput.text
-          integrator.thread_count = threadCountInput.text
-          integrator.integrate()
+          if (checkInputFields()) {
+            integrationMode()
+            answerView.text = qsTr("Integration in process")
+
+            integrator.from = fromInput.text
+            integrator.to = toInput.text
+            integrator.step = stepInput.text
+            integrator.thread_count = threadCountInput.text
+            integrator.integrate()
+          }
         }
       }
 
@@ -98,8 +137,7 @@ ApplicationWindow {
         onClicked: {
           integrator.cancel()
           answerView.text = qsTr("Integration interrupted")
-          cancelButton.visible = false
-          integrateButton.visible = true
+          idleMode()
         }
       }
     }

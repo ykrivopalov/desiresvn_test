@@ -1,6 +1,7 @@
 #include "thread_pool.h"
 
 #include <atomic>
+#include <cassert>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -68,7 +69,6 @@ class Worker {
   RoutineQueue& queue_;
   std::thread thread_;
 };
-
 }
 
 typedef std::shared_ptr<Worker> WorkerPtr;
@@ -76,22 +76,30 @@ typedef std::shared_ptr<Worker> WorkerPtr;
 class ThreadPoolImpl : public ThreadPool {
  public:
   ThreadPoolImpl(std::size_t thread_count) {
-    /// @todo maybe some sugar exists?
-    for (std::size_t i = 0; i < thread_count; ++i) {
-      workers_.push_back(WorkerPtr(new Worker(queue_)));
+    assert(thread_count > 0);
+    try {
+      /// @todo maybe some sugar exists?
+      for (std::size_t i = 0; i < thread_count; ++i) {
+        workers_.push_back(WorkerPtr(new Worker(queue_)));
+      }
+    } catch (const std::exception&) {
+      Shutdown();
+      throw;
     }
   }
 
-  ~ThreadPoolImpl() {
+  ~ThreadPoolImpl() { Shutdown(); }
+
+  virtual void Execute(Routine routine) { queue_.Push(routine); }
+
+ private:
+  void Shutdown() {
     queue_.Stop();
     for (WorkerPtr& w : workers_) {
       w->Wait();
     }
   }
 
-  virtual void Execute(Routine routine) { queue_.Push(routine); }
-
- private:
   RoutineQueue queue_;
   std::vector<WorkerPtr> workers_;
 };
@@ -99,5 +107,4 @@ class ThreadPoolImpl : public ThreadPool {
 ThreadPoolPtr CreateThreadPool(std::size_t thread_count) {
   return ThreadPoolPtr(new ThreadPoolImpl(thread_count));
 }
-
 }

@@ -20,7 +20,8 @@ class Integrator : public QObject {
   double answer() { return answer_; }
 
  signals:
-  void integrated();
+  void integrated(const double result);
+  void error(const QString& error);
 
  public slots:
   void cancel();

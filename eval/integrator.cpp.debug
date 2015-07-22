@@ -1,11 +1,11 @@
 #include "integrator.h"
 
 #include <atomic>
-#include <cassert>
 #include <cmath>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <iostream>
 
 #include "thread_pool.h"
 
@@ -34,6 +34,7 @@ class Integration : public Execution {
         evaluations_left_(0),
         params_(params),
         thread_pool_(CreateThreadPool(params.thread_count)),
+        tasks_evaluated_(0),
         handler_(handler) {
     Start();
   }
@@ -47,11 +48,8 @@ class Integration : public Execution {
 
  private:
   void Start() {
-    const std::size_t tasks_per_thread =
-        params_.x1 > params_.x0
-            ? static_cast<std::size_t>((params_.x1 - params_.x0) /
-                                       (params_.step * params_.thread_count))
-            : 0;
+    const std::size_t tasks_per_thread = static_cast<std::size_t>(
+        (params_.x1 - params_.x0) / (params_.step * params_.thread_count));
 
     evaluations_left_ = params_.thread_count;
     double current_x = params_.x0;
@@ -79,20 +77,30 @@ class Integration : public Execution {
     if (updated_evaluations_left == 0 && !canceled_) {
       if (!canceled_) handler_(result_);
 
+      std::cout << "evaluated all:" << tasks_evaluated_ << std::endl;
+
       completion_.notify_all();
     }
   }
 
-  void evaluate_tasks(double x0, double x1, ResultHandler handler) const {
+  void evaluate_tasks(double x0, double x1, ResultHandler handler) {
+    std::cout << "evaluate_tasks " << x0 << " " << x1 << std::endl;
     double result = 0;
     Point previous_point(x0, params_.f(x0));
+    double last_x = 0;
     for (double x = x0 + params_.step; x <= x1; x += params_.step) {
+      last_x = x;
       if (canceled_) break;
 
       Point current_point(x, params_.f(x));
       result += TrapezoidArea(previous_point, current_point);
       previous_point = std::move(current_point);
+
+      ++tasks_evaluated_;
     }
+
+    double new_x = last_x + params_.step;
+    std::cout << "last x" << last_x << " " << new_x << " " << x1 << " "  << (new_x <= x1) << " "  << (new_x > x1) << std::endl;
     handler(result);
   }
 
@@ -103,8 +111,10 @@ class Integration : public Execution {
   double result_;
   std::size_t evaluations_left_;
 
+
   const IntegrationParams params_;
   ThreadPoolPtr thread_pool_;
+  std::atomic<std::size_t> tasks_evaluated_;
   ResultHandler handler_;
 };
 }  // namespace
@@ -113,7 +123,6 @@ Integrator::Integrator() : integration_step_(0.1), thread_count_(1) {}
 
 ExecutionPtr Integrator::Integrate(Function f, double x0, double x1,
                                    ResultHandler handler) {
-  assert(integration_step_ > 0);
   IntegrationParams params{f, x0, x1, integration_step_, thread_count_};
 
   return ExecutionPtr(new Integration(params, handler));

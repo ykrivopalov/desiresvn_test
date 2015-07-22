@@ -14,6 +14,8 @@ typedef std::function<void(double)> ResultHandler;
 /// @brief class for async execution control
 class Execution {
  public:
+  virtual ~Execution() {}
+
   /// @brief synchronously wait until execution finished
   virtual void Wait() = 0;
 
