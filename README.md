@@ -1,12 +1,34 @@
-# Тестовое задание на позицию C++/Qt
+# Task
 
-Спроектировать и реализовать приложение, состоящее из следующих компонентов:
+Design and implement an application that contains the following components:
 
-1. Статическая библиотека, написанная на C++ без применения сторонних библиотек и фреймворков, реализующая следующий функцонал:
-Многопоточное вычисление интеграла функции sin(x) методом трапеций, с возможностью задавать шаг интегрирования
-Threadpool для решения вышеприведенной задачи, с возможностью задавать количество потоков
+* Static library written in C++ (without third party libraries and frameworks) that implements the following functional:
+  * parallel integration of sin(x) by trapezoidal rule with a possibility of the integration step setting;
+  * thread pool with a possibility of threads count setting.
 
-2. Приложение, реализующее интерфейс на Qt/QML и использующее данную библиотеку, в котором возможно указать промежуток и шаг интегрирования, а также собственно запустить вычисление, и прервать его, например в случае, если выбран очень большой интервал и маленький шаг.
+* Application with Qt/QML interface that uses integration library from the previous paragraph. This application should allow to perform or cancel integration and change integration step.
 
-Значительным плюсом будет, если весь проект будет компилироваться и работать на платформах Windows и Linux. Дизайн, реализация и стиль написания кода должны быть максимально приближены к реальному коммерческому приложению. 
-При реализации можно и нужно использовать возможности Стандарта C++11
+* Application should compile under Windows and Linux platforms. It's better to use features from the C++11 standard.
+
+# How to build
+
+## Linux
+
+1. Install g++, Qt5
+2. `cd build`
+3. `cmake ..`
+4. `make`
+5. `./gui/integrator_gui`
+
+## Windows
+
+1. Install Visual Studio and Qt5
+2. `cd build`
+3. `cmake ..`. If cmake couldn't find Qt then specify Qt path in parameters.  
+  Ex.: `cmake -DCMAKE_PREFIX_PATH="C:\Qt\5.5\msvc2012" ..`
+4. Previous command creates visual studio solution file; so open it and build projects.
+5. Before application execution make sure that Qt binaries in system path.  
+  Ex.:
+
+        set PATH=%PATH%;C:\Qt\5.5\msvc2012\bin
+        gui\Release\integrator_gui.exe
