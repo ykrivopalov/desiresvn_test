@@ -1,8 +1,9 @@
 #include "integrator.h"
 
-#include <QTest>
-
 #include <eval/integrator.h>
+
+#include <QTest>
+#include <cmath>
 
 namespace tests {
 void Integrator::CheckRectangleArea() {
